@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VESPER: The Gilded Eclipse</title>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./node_modules/three/build/three.module.js"
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --gold: #f59e0b;
+      --gold-bright: #fde68a;
+      --gold-deep: #b45309;
+      --aether: #38bdf8;
+      --crimson: #f43f5e;
+      --obsidian: rgba(8, 11, 20, 0.82);
+      --border-gold: rgba(245, 158, 11, 0.42);
+      --text-ivory: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #04060c;
+      color: var(--text-ivory);
+      font-family: 'Georgia', 'Cinzel', 'Palatino Linotype', serif;
+      user-select: none;
+    }
+
+    /* FULLSCREEN 3D VIEWPORT */
+    #viewport-container {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+    }
+    #viewport-container canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+
+    /* 3D FLOATING WORLD LABELS (Damage Numbers, NPC Prompts, Exit Gate Titles) */
+    #floating-labels-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+      overflow: hidden;
+      transition: opacity 0.6s ease;
+    }
+    #floating-labels-layer.title-hidden {
+      opacity: 0;
+    }
+    .world-float-label {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      font-family: 'Georgia', serif;
+      font-weight: 900;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.98);
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .world-float-label.gate-label {
+      background: rgba(8, 11, 20, 0.88);
+      border: 1.5px solid var(--gold);
+      color: var(--gold-bright);
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 12.5px;
+      letter-spacing: 1px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.85);
+    }
+
+    /* SUBTLE VIGNETTE */
+    .vignette-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      background: radial-gradient(circle at center, transparent 58%, rgba(2, 4, 10, 0.78) 100%);
+    }
+
+    /* ==========================================================================
+       CINEMATIC ANIMATED TITLE SCREEN OVERLAY
+       ========================================================================== */
+    #cinematic-title-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at 50% 42%, rgba(245, 158, 11, 0.14) 0%, rgba(15, 23, 42, 0.52) 44%, rgba(3, 5, 12, 0.88) 100%);
+      backdrop-filter: blur(2.5px);
+      transition: opacity 0.95s cubic-bezier(0.22, 1, 0.36, 1), transform 0.95s cubic-bezier(0.22, 1, 0.36, 1);
+      overflow: hidden;
+    }
+    #cinematic-title-screen.dissolving {
+      opacity: 0;
+      transform: scale(1.08);
+      pointer-events: none;
+    }
+    #cinematic-title-screen.hidden {
+      display: none;
+    }
+
+    /* CINEMATIC LETTERBOX BARS */
+    .letterbox-bar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 44px;
+      background: linear-gradient(180deg, rgba(2, 4, 10, 0.95), rgba(2, 4, 10, 0.6));
+      border-color: rgba(245, 158, 11, 0.25);
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      font-size: 10.5px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: rgba(253, 230, 138, 0.65);
+    }
+    .letterbox-top {
+      top: 0;
+      border-bottom: 1px solid rgba(245, 158, 11, 0.22);
+    }
+    .letterbox-bottom {
+      bottom: 0;
+      background: linear-gradient(0deg, rgba(2, 4, 10, 0.95), rgba(2, 4, 10, 0.6));
+      border-top: 1px solid rgba(245, 158, 11, 0.22);
+    }
+
+    /* ROTATING CELESTIAL ASTROLABE & ECLIPSE CORONA CENTERPIECE */
+    .eclipse-stage {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 4;
+      padding: 20px;
+    }
+    .astrolabe-backdrop {
+      position: absolute;
+      width: 540px;
+      height: 540px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -54%);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .corona-glow {
+      position: absolute;
+      width: 250px;
+      height: 250px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(2, 4, 10, 0.98) 46%, rgba(245, 158, 11, 0.85) 51%, rgba(234, 88, 12, 0.35) 62%, transparent 76%);
+      box-shadow:
+        0 0 60px rgba(245, 158, 11, 0.45),
+        0 0 120px rgba(225, 29, 72, 0.24),
+        inset 0 0 32px rgba(251, 191, 36, 0.55);
+      animation: coronaPulse 4.5s ease-in-out infinite alternate;
+    }
+    .eclipse-occultation-disc {
+      position: absolute;
+      width: 162px;
+      height: 162px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #090d1a 0%, #020307 100%);
+      border: 1.5px solid rgba(253, 230, 138, 0.85);
+      box-shadow: 0 0 28px rgba(251, 191, 36, 0.9);
+    }
+    .astrolabe-svg {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+    .ring-cw {
+      transform-origin: 270px 270px;
+      animation: spinCW 56s linear infinite;
+    }
+    .ring-ccw {
+      transform-origin: 270px 270px;
+      animation: spinCCW 38s linear infinite;
+    }
+    .ring-fast {
+      transform-origin: 270px 270px;
+      animation: spinCW 22s linear infinite;
+    }
+
+    @keyframes spinCW {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @keyframes spinCCW {
+      from { transform: rotate(360deg); }
+      to { transform: rotate(0deg); }
+    }
+    @keyframes coronaPulse {
+      0% { transform: scale(0.96); filter: brightness(0.95); }
+      100% { transform: scale(1.06); filter: brightness(1.22); }
+    }
+
+    /* MONUMENTAL GILDED TYPOGRAPHY */
+    .title-lockup {
+      position: relative;
+      z-index: 5;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 14px;
+    }
+    .title-overline {
+      font-size: 11px;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      color: var(--aether);
+      text-shadow: 0 0 14px rgba(56, 189, 248, 0.75);
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+    .title-main {
+      font-size: clamp(54px, 8vw, 92px);
+      font-weight: 900;
+      letter-spacing: 18px;
+      padding-left: 18px;
+      text-transform: uppercase;
+      background: linear-gradient(180deg, #fffbeb 0%, #fde68a 38%, #f59e0b 72%, #92400e 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 8px 28px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 26px rgba(245, 158, 11, 0.42));
+      animation: titleFloat 5s ease-in-out infinite alternate;
+    }
+    @keyframes titleFloat {
+      0% { transform: translateY(0px); }
+      100% { transform: translateY(-4px); }
+    }
+
+    .title-filigree-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 4px;
+      margin-bottom: 14px;
+    }
+    .filigree-line {
+      width: 95px;
+      height: 1.5px;
+      background: linear-gradient(90deg, transparent, var(--gold), var(--gold-bright));
+    }
+    .filigree-line.right {
+      background: linear-gradient(90deg, var(--gold-bright), var(--gold), transparent);
+    }
+    .title-subtitle {
+      font-size: 16px;
+      letter-spacing: 8px;
+      padding-left: 8px;
+      text-transform: uppercase;
+      color: var(--gold-bright);
+      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.95);
+      font-weight: 700;
+    }
+    .title-lore-epigraph {
+      max-width: 520px;
+      font-size: 13px;
+      line-height: 1.55;
+      color: #cbd5e1;
+      font-style: italic;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
+      margin-bottom: 24px;
+    }
+
+    /* PRIMARY AWAKEN CTA BUTTON */
+    .title-cta-group {
+      position: relative;
+      z-index: 6;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+    .awaken-btn {
+      position: relative;
+      cursor: pointer;
+      padding: 15px 42px;
+      font-family: 'Georgia', 'Cinzel', serif;
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 3.5px;
+      text-transform: uppercase;
+      color: #fef3c7;
+      background: linear-gradient(180deg, rgba(30, 22, 16, 0.92) 0%, rgba(12, 10, 18, 0.96) 100%);
+      border: 1.5px solid var(--gold);
+      border-radius: 8px;
+      box-shadow:
+        0 0 28px rgba(245, 158, 11, 0.35),
+        inset 0 0 18px rgba(245, 158, 11, 0.18);
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+    .awaken-btn:hover {
+      transform: translateY(-2px) scale(1.03);
+      border-color: #fffbeb;
+      box-shadow:
+        0 0 42px rgba(245, 158, 11, 0.68),
+        inset 0 0 24px rgba(245, 158, 11, 0.32);
+    }
+    .awaken-btn-hint {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    /* DIRECT CHAMBER / BIOME QUICK-SELECT BAR ON TITLE SCREEN */
+    .title-chamber-selector {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px;
+      max-width: 840px;
+      margin-top: 4px;
+      padding: 10px 14px;
+      background: rgba(8, 11, 20, 0.76);
+      border: 1px solid rgba(245, 158, 11, 0.28);
+      border-radius: 8px;
+      backdrop-filter: blur(8px);
+    }
+    .title-chamber-pill {
+      cursor: pointer;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 11px;
+      color: #cbd5e1;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 4px 9px;
+      border-radius: 5px;
+      transition: all 0.14s ease;
+    }
+    .title-chamber-pill:hover {
+      color: var(--gold-bright);
+      border-color: var(--gold);
+      background: rgba(245, 158, 11, 0.15);
+      transform: translateY(-1px);
+    }
+
+    /* CLEAN HADES-STYLE HUD OVERLAY */
+    .hud-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 18px 24px;
+      transition: opacity 0.65s ease, transform 0.65s ease;
+    }
+    .hud-overlay.title-hidden {
+      opacity: 0;
+      transform: translateY(12px);
+      pointer-events: none !important;
+    }
+    .hud-overlay.title-hidden .hud-interactive {
+      pointer-events: none !important;
+    }
+    .hud-interactive {
+      pointer-events: auto;
+    }
+
+    /* TOP CHAMBER BANNER & VITALS */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .chamber-banner {
+      background: var(--obsidian);
+      backdrop-filter: blur(10px);
+      border-left: 3px solid var(--gold);
+      border-top: 1px solid rgba(255,255,255,0.08);
+      border-right: 1px solid rgba(255,255,255,0.08);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px;
+      padding: 10px 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65);
+      max-width: 560px;
+    }
+    .chamber-title {
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      color: var(--gold-bright);
+    }
+    .chamber-sub {
+      font-size: 12px;
+      color: #cbd5e1;
+      margin-top: 3px;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    .vitals-pill-bar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--obsidian);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-gold);
+      border-radius: 8px;
+      padding: 8px 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65);
+    }
+    .vital-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .vital-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+    }
+    .vital-val {
+      font-size: 14px;
+      font-weight: 900;
+    }
+    .vital-val.crimson { color: var(--crimson); }
+    .vital-val.gold { color: var(--gold-bright); }
+    .vital-val.aether { color: var(--aether); }
+
+    .title-return-btn {
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      color: var(--gold-bright);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: system-ui, -apple-system, sans-serif;
+      transition: all 0.15s;
+    }
+    .title-return-btn:hover {
+      background: rgba(245, 158, 11, 0.18);
+      border-color: var(--gold-bright);
+    }
+
+    /* NON-BLOCKING BOON AWAKENED TOAST BANNER (Upper Center) */
+    .boon-toast {
+      align-self: center;
+      background: linear-gradient(180deg, rgba(24, 16, 36, 0.94), rgba(10, 14, 26, 0.96));
+      border: 1.5px solid var(--gold);
+      border-radius: 8px;
+      padding: 10px 22px;
+      text-align: center;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.85);
+      transition: opacity 0.25s;
+      max-width: 580px;
+    }
+    .boon-toast.hidden { display: none; }
+    .boon-toast-title {
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+    .boon-toast-desc {
+      font-size: 12px;
+      color: #e2e8f0;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    /* BOTTOM AREA: HADES-STYLE NON-BLOCKING NPC VOICE BANNER & PROGRESSIVE ABILITY BAR */
+    .bottom-hud {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .npc-voice-banner {
+      width: 660px;
+      max-width: 92vw;
+      background: linear-gradient(90deg, rgba(10, 14, 24, 0.95), rgba(22, 28, 45, 0.95));
+      border-left: 4px solid var(--gold);
+      border-top: 1px solid rgba(255, 255, 255, 0.14);
+      border-right: 1px solid rgba(255, 255, 255, 0.14);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      padding: 12px 18px;
+      box-shadow: 0 16px 42px rgba(0, 0, 0, 0.85);
+    }
+    .npc-voice-banner.hidden { display: none; }
+    .npc-banner-header {
+      font-size: 12.5px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+    .npc-banner-title {
+      color: var(--text-muted);
+      font-weight: 400;
+      font-size: 11px;
+    }
+    .npc-banner-quote {
+      font-size: 13px;
+      line-height: 1.45;
+      color: #f1f5f9;
+      font-style: italic;
+    }
+
+    /* PROGRESSIVE ABILITY BAR */
+    .progressive-hotbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      background: var(--obsidian);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-gold);
+      border-radius: 8px;
+      padding: 7px 14px;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.7);
+    }
+    .ability-pill {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 11.5px;
+      color: #e2e8f0;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      padding: 5px 11px;
+      border-radius: 6px;
+    }
+    .ability-pill b { color: var(--gold-bright); }
+    .ability-pill.gold {
+      background: rgba(245, 158, 11, 0.16);
+      border-color: var(--gold);
+      color: var(--gold-bright);
+    }
+    .ability-pill.active-btn {
+      cursor: pointer;
+      transition: transform 0.12s, border-color 0.12s;
+    }
+    .ability-pill.active-btn:hover {
+      transform: translateY(-2px);
+      border-color: var(--gold-bright);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- FULLSCREEN 3D WEBGL VIEWPORT -->
+  <div id="viewport-container"></div>
+  <div class="vignette-layer"></div>
+  <div id="floating-labels-layer" class="title-hidden"></div>
+
+  <!-- CINEMATIC ANIMATED 3D + ASTROLABE TITLE SCREEN -->
+  <section id="cinematic-title-screen">
+    <div class="letterbox-bar letterbox-top">
+      <span>☉ Sol-Vespera Sanctum · Cycle of the Dying Star</span>
+      <span>Three.js Custom GLSL · 16 Progressive Chambers (0 – XV)</span>
+    </div>
+
+    <div class="eclipse-stage">
+      <!-- Animated Counter-Rotating Celestial Astrolabe & Total Solar Eclipse -->
+      <div class="astrolabe-backdrop">
+        <div class="corona-glow"></div>
+        <svg class="astrolabe-svg" viewBox="0 0 540 540" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <g class="ring-cw">
+            <circle cx="270" cy="270" r="244" stroke="rgba(245, 158, 11, 0.28)" stroke-width="1.2" stroke-dasharray="6 8" />
+            <circle cx="270" cy="270" r="228" stroke="rgba(253, 230, 138, 0.35)" stroke-width="1.5" />
+            <path d="M270 14 L270 38 M270 502 L270 526 M14 270 L38 270 M502 270 L526 270" stroke="#fde68a" stroke-width="2" />
+            <circle cx="270" cy="42" r="5" fill="#fde68a" />
+            <circle cx="270" cy="498" r="5" fill="#38bdf8" />
+            <circle cx="42" cy="270" r="5" fill="#f59e0b" />
+            <circle cx="498" cy="270" r="5" fill="#f43f5e" />
+          </g>
+          <g class="ring-ccw">
+            <circle cx="270" cy="270" r="186" stroke="rgba(56, 189, 248, 0.32)" stroke-width="1.2" stroke-dasharray="14 6" />
+            <rect x="138" y="138" width="264" height="264" stroke="rgba(245, 158, 11, 0.22)" stroke-width="1.2" />
+            <rect x="138" y="138" width="264" height="264" transform="rotate(45 270 270)" stroke="rgba(245, 158, 11, 0.22)" stroke-width="1.2" />
+          </g>
+          <g class="ring-fast">
+            <circle cx="270" cy="270" r="126" stroke="rgba(253, 230, 138, 0.52)" stroke-width="1.5" stroke-dasharray="3 9" />
+            <circle cx="270" cy="144" r="4" fill="#38bdf8" />
+            <circle cx="270" cy="396" r="4" fill="#fde68a" />
+          </g>
+        </svg>
+        <div class="eclipse-occultation-disc"></div>
+      </div>
+
+      <!-- Monumental Title Lockup -->
+      <div class="title-lockup">
+        <div class="title-overline">◈ Chronicle of the Ashen Chronomancer ◈</div>
+        <h1 class="title-main">VESPER</h1>
+        <div class="title-filigree-row">
+          <span class="filigree-line"></span>
+          <span class="title-subtitle">The Gilded Eclipse</span>
+          <span class="filigree-line right"></span>
+        </div>
+        <p class="title-lore-epigraph">
+          “Beneath a boiling, dying sun, every shattered pillar, alchemical tide, and carved axiom bends to those who master stillness.”
+        </p>
+      </div>
+
+      <!-- Primary CTA & Direct Chamber Jump Bar -->
+      <div class="title-cta-group">
+        <button class="awaken-btn" id="btn-awaken-sanctum" onclick="window.VESPER.dismissTitleScreen(0)">
+          ⚔ Awaken in the House of Ash
+        </button>
+        <div class="awaken-btn-hint">Press <b>[Enter]</b> or <b>[Space]</b> to Descend into the 3D Sanctum</div>
+
+        <div class="title-chamber-selector">
+          <button class="title-chamber-pill" onclick="window.VESPER.dismissTitleScreen(0)">0 · House of Ash</button>
+          <button class="title-chamber-pill" onclick="window.VESPER.dismissTitleScreen(1)">I · First Blood</button>
+          <button class="title-chamber-pill" onclick="window.VESPER.dismissTitleScreen(2)">II · Sledgehammer [F]</button>
+          <button class="title-chamber-pill" onclick="window.VESPER.dismissTitleScreen(3)">III · Alchemy Crucible</button>
+          <button class="title-chamber-pill" onclick="window.VESPER.dismissTitleScreen(4)">IV · Living Axioms</button>
+          <button class="title-chamber-pill" onclick="window.VESPER.dismissTitleScreen(5)">V · Lasso &amp; Arcana [Q]</button>
+          <button class="title-chamber-pill" onclick="window.VESPER.dismissTitleScreen(6)">VI · Eclipse Throne</button>
+          <button class="title-chamber-pill" onclick="window.VESPER.dismissTitleScreen(7)">VII · Chasm Grapple [G]</button>
+          <button class="title-chamber-pill" onclick="window.VESPER.dismissTitleScreen(8)">VIII · Solar Parry [C]</button>
+          <button class="title-chamber-pill" onclick="window.VESPER.dismissTitleScreen(9)">IX · Phantom Twin [T]</button>
+          <button class="title-chamber-pill" onclick="window.VESPER.dismissTitleScreen(10)">X · Abyssal Burrow [X]</button>
+          <button class="title-chamber-pill" onclick="window.VESPER.dismissTitleScreen(11)">XI · Polyomino Sigils [Z]</button>
+          <button class="title-chamber-pill" onclick="window.VESPER.dismissTitleScreen(12)">XII · Crown Possess [V]</button>
+          <button class="title-chamber-pill" onclick="window.VESPER.dismissTitleScreen(13)">XIII · Rift Portals [P]</button>
+          <button class="title-chamber-pill" onclick="window.VESPER.dismissTitleScreen(14)">XIV · Singularity [N]</button>
+          <button class="title-chamber-pill" onclick="window.VESPER.dismissTitleScreen(15)">XV · Harmonic Cadence [M]</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="letterbox-bar letterbox-bottom">
+      <span>WASD Move · Left-Click Cast · Space Dash · E Converse</span>
+      <span>Progressive Systemic Action-RPG</span>
+    </div>
+  </section>
+
+  <!-- CLEAN HADES-STYLE HUD -->
+  <div id="hud-overlay" class="hud-overlay title-hidden">
+
+    <!-- TOP CHAMBER OBJECTIVE & VITALS -->
+    <header class="top-bar">
+      <div class="chamber-banner hud-interactive">
+        <div class="chamber-title" id="hud-chamber-title">The House of Ash</div>
+        <div class="chamber-sub" id="hud-chamber-sub">Speak with Soren &amp; Nyxara [E] · Step into the North Gate to begin your Escape</div>
+      </div>
+
+      <div class="vitals-pill-bar hud-interactive">
+        <div class="vital-item">
+          <span class="vital-label">🩸 Vitality</span>
+          <span class="vital-val crimson" id="hud-vitality">100 / 100</span>
+        </div>
+        <div class="vital-item">
+          <span class="vital-label">✨ Essence</span>
+          <span class="vital-val gold" id="hud-essence">0 (1x)</span>
+        </div>
+        <div class="vital-item">
+          <span class="vital-label">⏳ Time Flow</span>
+          <span class="vital-val aether" id="hud-chrono">100%</span>
+        </div>
+        <button class="title-return-btn" onclick="window.VESPER.openTitleScreen()" title="Return to Cinematic Title Screen [Esc]">
+          ☉ Title [Esc]
+        </button>
+      </div>
+    </header>
+
+    <!-- NON-BLOCKING BOON AWAKENING BANNER -->
+    <div id="boon-toast-banner" class="boon-toast hidden"></div>
+
+    <!-- BOTTOM NPC VOICE BANNER & PROGRESSIVE ABILITY HOTBAR -->
+    <footer class="bottom-hud">
+      <div id="npc-voice-banner" class="npc-voice-banner hidden"></div>
+      <div id="progressive-hotbar" class="progressive-hotbar hud-interactive"></div>
+    </footer>
+
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
