@@ -2,6 +2,14 @@
 
 ### One world. Every possibility. No limits.
 
+<p align="center">
+  <a href="https://vesper.amazoogle.workers.dev">
+    <img src="https://img.shields.io/badge/%E2%96%B6_PLAY_THE_LATEST_BUILD-f59e0b?style=for-the-badge&amp;logo=googlechrome&amp;logoColor=white" alt="▶ PLAY THE LATEST BUILD" height="64" />
+  </a>
+</p>
+
+<p align="center"><strong><a href="https://vesper.amazoogle.workers.dev">Play Vesper now — directly in your browser</a></strong></p>
+
 ![Development: Just Begun](https://img.shields.io/badge/Development-Just_Begun-f59e0b)
 ![Scope: YES](https://img.shields.io/badge/scope-YES-c084fc)
 ![Platform: Browser First](https://img.shields.io/badge/Platform-Browser_First-c084fc)
@@ -15,7 +23,7 @@ We believe players should never have to choose between depth and accessibility, 
 
 Whether you want to master time, build an empire, discover a new ecosystem, raise a family, design a spacecraft, or spend a lifetime running a quiet village bookstore, your journey will belong entirely to you.
 
-![Vesper cinematic title screen](docs/images/title-screen.png)
+[![Vesper cinematic title screen](docs/images/title-screen.png)](https://vesper.amazoogle.workers.dev)
 
 *Early development screenshot: the gateway to Sol-Vespera.*
 
@@ -60,7 +68,7 @@ Our early prototype establishes the first sixteen chambers. Each introduces a fo
 | **XIV · The Inverted Planetarium** | Gravity singularities, gravitational lensing, and dynamic attraction fields. |
 | **XV · Amphitheater of the Dying Pulse** | Harmonic Cadence and synchronized resonance across interconnected abilities. |
 
-![Hall of Living Axioms prototype](docs/images/living-axioms.png)
+[![Hall of Living Axioms prototype](docs/images/living-axioms.png)](https://vesper.amazoogle.workers.dev)
 
 *Early development screenshot: physical language and environmental combat in the Hall of Living Axioms.*
 
@@ -114,7 +122,7 @@ Vesper will support every way of playing without requiring separate games or dis
 
 These categories are organizational starting points. They are not limits on the features we intend to deliver.
 
-![Harmonic Cadence prototype](docs/images/harmonic-cadence.png)
+[![Harmonic Cadence prototype](docs/images/harmonic-cadence.png)](https://vesper.amazoogle.workers.dev)
 
 *Early development screenshot: portals, companions, and Ley-Line infrastructure in the foundational combat prototype.*
 
@@ -150,6 +158,10 @@ The current foundation uses **Three.js, custom GLSL, procedural geometry, synthe
 We are committed to completing the entire vision. We will approach each system incrementally while preserving the full ambition of the project. There is no final feature cutoff: the roadmap will grow whenever a new possibility is identified.
 
 ## ⚡ Run the Early Prototype
+
+**[▶ Play the latest build](https://vesper.amazoogle.workers.dev)** — no installation required. Use a current browser with WebGL support, a keyboard, and a mouse.
+
+To run it locally:
 
 ```sh
 npm install
@@ -202,7 +214,7 @@ Abilities become available through chamber progression. The title screen also pr
 
 Vesper is at the beginning of its journey. We welcome programmers, artists, writers, composers, scientists, worldbuilders, and players who share the belief that a virtual world should be limited only by what can be imagined and ultimately made possible.
 
-Explore the prototype, study the [chamber design](DESIGN_LOG.md), and help us connect the next system to the world. Every contribution brings us closer to a universe where every possibility has a place.
+Explore the [latest playable build](https://vesper.amazoogle.workers.dev), study the [chamber design](DESIGN_LOG.md), and help us connect the next system to the world. Every contribution brings us closer to a universe where every possibility has a place.
 
 ---
 
